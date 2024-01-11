@@ -8,11 +8,11 @@ from lab_demo import (
     SalesForecast
 )
 
-# This is our collection for all the moving parts
+# This is our collection for all the moving parts. We just keep adding to it
 problem = Problem()
 
 sales_forecast = SalesForecast('data_files/sales_forecast.csv')
-# <any number of things here>
+# <any number of things here to interact with the sales_forecast>
 sales_forecast.interpolate_forecast()
 
 # Try hashing out the previous line. The Problem class knows it's wrong
@@ -25,3 +25,7 @@ machine_2 = Machine(machine_id=2, shift_pattern='2-10')
 machine_3 = Machine(machine_id=3, shift_pattern='6-2 and 2-10')
 machine_4 = Machine(machine_id=4, shift_pattern='2-10')
 
+problem.add_machine(machine_1)
+problem.add_machine(machine_2)
+problem.add_machine(machine_3)
+problem.add_machine(machine_4)
