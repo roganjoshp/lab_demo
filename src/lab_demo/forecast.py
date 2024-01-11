@@ -19,6 +19,7 @@ class SalesForecast:
         
         self.base_forecast = pd.read_csv(_fake_upload_path)
         self.forecast = pd.DataFrame()
+        self._is_interpolated = False
         
     def interpolate_forecast(self):
         
@@ -50,6 +51,7 @@ class SalesForecast:
         self.forecast = self.forecast.set_index(date_range)
         
         self.forecast = self.forecast.resample(rule='H').interpolate()
+        self._is_interpolated = True
         # print(self.forecast.head(10))
     
 
