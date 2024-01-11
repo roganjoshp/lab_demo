@@ -7,11 +7,14 @@ import pandas as pd
 
 class SalesForecast:
     
-    def __init__(self):
+    def __init__(
+        self,
+        file_path: str):
+        
         _base_path = pathlib.Path(__file__).parent.resolve()
         _fake_upload_path = os.path.join(
             _base_path, 
-            'data_files/sales_forecast.csv'
+            file_path
         )
         
         self.base_forecast = pd.read_csv(_fake_upload_path)
@@ -22,15 +25,21 @@ class SalesForecast:
         self.forecast = self.base_forecast.copy()
         
         _columns = self.forecast.columns
-        
         _blank_week = pd.DataFrame(
             [[0 for _ in _columns]], columns=_columns
         )
         
-        # Add in an additional "week" so that interpolation starts at 0
+        # Add in an additional "week" so that interpolation starts at 0.
+        # Targets are for the end of the week, but we start production on the 
+        # Monday. Therefore, we should start with a zero target for the first
+        # hour of the first day of the week
         self.forecast = pd.concat([_blank_week, self.forecast])
     
-        # Add in a final "week" so that we have something to interp up to
+        # Add in a final "week" so that we have something to interp up to. 
+        # Again, the dates we're working with all start on the Monday, but the 
+        # last week of the target also isn't due on that day, so we need the 
+        # start of the following week to represent when the full demand is 
+        # "realised"
         self.forecast = pd.concat([self.forecast, _blank_week])
        
         today = dt.date.today()
@@ -40,16 +49,8 @@ class SalesForecast:
         
         self.forecast = self.forecast.set_index(date_range)
         
-        print(self.forecast.head(10))
-        
-        # # Transpose the df and get it at hourly granulatity using interpolate
-        # self.forecast = (
-        #     self.base_forecast.set_index('Product Name')
-        #                       .T
-        #                       .set_index(pd.DatetimeIndex(date_range))
-        #                       .cumsum()
-        # )
-        # self.forecast = self.forecast.resample(rule='H').interpolate()
+        self.forecast = self.forecast.resample(rule='H').interpolate()
+        # print(self.forecast.head(10))
         
 
 if __name__ == '__main__':

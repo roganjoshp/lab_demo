@@ -3,4 +3,4 @@
 class Machine:
     
     def __init__(self):
-        pass
+        self.shift_pattern = {}

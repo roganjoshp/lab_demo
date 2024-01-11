@@ -1,0 +1,1 @@
+from lab_demo.forecast import SalesForecast
