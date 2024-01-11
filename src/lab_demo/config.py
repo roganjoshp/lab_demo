@@ -4,32 +4,32 @@ class Config:
     
     MACHINE_STATS = {
         1: {
-            'ideal_run_rate': 100,
-            'efficiency': 0.85,
-            'min_downtime_secs': 20,
-            'downtime_probability': 0.04,
-            'restart_probability': 0.3
+            'ideal_run_rate': 85,
+            # 'efficiency': 0.85,
+            # 'min_downtime_secs': 20,
+            # 'downtime_probability': 0.04,
+            # 'restart_probability': 0.3
         },
         2: {
-            'ideal_run_rate': 100,
-            'efficiency': 0.9,
-            'min_downtime_secs': 120,
-            'downtime_probability': 0.02,
-            'restart_probability': 0.3
+            'ideal_run_rate': 90,
+            # 'efficiency': 0.9,
+            # 'min_downtime_secs': 120,
+            # 'downtime_probability': 0.02,
+            # 'restart_probability': 0.3
         },
         3: {
-            'ideal_run_rate': 100,
-            'efficiency': 0.75,
-            'min_downtime_secs': 50,
-            'downtime_probability': 0.01,
-            'restart_probability': 0.3
+            'ideal_run_rate': 75,
+            # 'efficiency': 0.75,
+            # 'min_downtime_secs': 50,
+            # 'downtime_probability': 0.01,
+            # 'restart_probability': 0.3
         },
         4: {
-            'ideal_run_rate': 100,
-            'efficiency': 0.6,
-            'min_downtime_secs': 10,
-            'downtime_probability': 0.06,
-            'restart_probability': 0.3
+            'ideal_run_rate': 60,
+            # 'efficiency': 0.6,
+            # 'min_downtime_secs': 10,
+            # 'downtime_probability': 0.06,
+            # 'restart_probability': 0.3
         }
     }
 

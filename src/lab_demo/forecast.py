@@ -51,7 +51,7 @@ class SalesForecast:
         
         self.forecast = self.forecast.resample(rule='H').interpolate()
         # print(self.forecast.head(10))
-        
+    
 
 if __name__ == '__main__':
     sales_forecast = SalesForecast()
