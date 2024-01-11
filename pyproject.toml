@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab_demo"
+authors = [
+    {"name" = "Josh Pilkington", "email" = "j.pilkington@hotmail.com"},
+]
+version = "0.0.1"
+description = "A machine scheduling library"
+dependencies = [
+    "numpy>=1.26.0"
+]
+readme="README.md"
+requires-python = ">=3.8"
