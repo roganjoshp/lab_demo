@@ -7,7 +7,6 @@ class ShiftPatterns:
         self.config = Config()
         self.shifts = self.config.SHIFT_PATTERNS
         
-        
 
 if __name__ == '__main__':
     

@@ -10,7 +10,7 @@ class Problem:
         self.forecast = pd.DataFrame()
         
     def add_machine(self, machine):
-        pass
+        self.machines.append(machine)
     
     def add_forecast(self, forecast):
         
