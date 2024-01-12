@@ -9,6 +9,9 @@ class Solver:
     def __init__(
         self,
         problem,
+        iterations = 10000,
+        temperature = 10,
+        cooling_rate = 0.9999,
         config: Config = Config()
     ):
         self.problem = problem
@@ -16,13 +19,23 @@ class Solver:
         self._product_names = problem.forecast.columns
         self._forecast = self.problem.forecast.copy()
         
+        # Map product names to an integer
+        self._product_name_map = {}
+        
         # Input data containers
         self._demands = {}
+        
         # Here we distinguish between "production" and "productivity".
         # The former is how much of a product we actually make and the latter 
         # is how much stuff a machine can be making at that time
         self._productivity_map = {}
         
+        # Keep track of all machines
+        self._machine_product_map = {}
+        
+        # Store a list of product ids against a machine id
+        self._machine_products = {} 
+               
     def _disaggregate_forecast(self):
         """
         Get an object of {machine_id: [hourly_demands]}
@@ -30,6 +43,7 @@ class Solver:
         
         for i, column in enumerate(self._product_names):
             self._demands[i] = self._forecast[column].values
+            self._product_name_map[column] = i
         
     def _create_productivity_map(self):
         
@@ -64,5 +78,14 @@ class Solver:
             
         # df = pd.DataFrame(self._productivity_map)
         # df.to_csv('prod_map.csv')
+    
+    def _create_product_swap_map(self):
+        
+        for machine in self.problem.machines:
+            self._machine_product_map[machine.id] = [
+                self._product_name_map[product.name] 
+                for product in machine._products
+            ]
+        
         
     

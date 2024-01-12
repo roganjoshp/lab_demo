@@ -13,12 +13,17 @@ class Machine:
         shift_pattern: str,
         config: Config = Config()
     ):
+        
+        if machine_id in self.seen_machine_ids:
+            raise ValueError("Machine ID already specified!")
+        
+        self.id = machine_id
+        
         self.config = config
         self._products = []
         self._product_names = set()
         
-        if machine_id in self.seen_machine_ids:
-            raise ValueError("Machine ID already specified!")
+        
         
         if shift_pattern not in self.config.SHIFT_PATTERNS:
             raise ValueError("Shift pattern not recognised!")
