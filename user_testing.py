@@ -5,10 +5,11 @@ This script is just to illustrate how a user might interact with your API
 from lab_demo import (
     Machine,
     Problem,
-    SalesForecast
+    SalesForecast,
+    Solver
 )
 
-# This is our collection for all the moving parts. We just keep adding to it
+# This is our container for all the moving parts. We just keep adding to it
 problem = Problem()
 
 sales_forecast = SalesForecast('data_files/sales_forecast.csv')
@@ -29,3 +30,9 @@ problem.add_machine(machine_1)
 problem.add_machine(machine_2)
 problem.add_machine(machine_3)
 problem.add_machine(machine_4)
+
+problem.build()
+
+solver = Solver(problem=problem)
+solver._disaggregate_forecast()
+solver._create_productivity_map()

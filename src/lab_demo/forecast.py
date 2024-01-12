@@ -50,6 +50,10 @@ class SalesForecast:
         
         self.forecast = self.forecast.set_index(date_range)
         
+        # Make the demands cumulative
+        for column in _columns:
+            self.forecast[column] = self.forecast[column].cumsum()
+        
         self.forecast = self.forecast.resample(rule='H').interpolate()
         self._is_interpolated = True
         # print(self.forecast.head(10))

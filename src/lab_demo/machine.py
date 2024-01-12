@@ -21,4 +21,7 @@ class Machine:
             raise ValueError("Shift pattern not recognised!")
         
         self.shift_pattern = self.config.SHIFT_PATTERNS[shift_pattern]
+        self.hourly_production = (
+            self.config.MACHINE_STATS[machine_id]['ideal_run_rate']
+        )
         self.seen_machine_ids.add(machine_id)

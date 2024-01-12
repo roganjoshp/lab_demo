@@ -8,6 +8,8 @@ class Problem:
     def __init__(self):
         self.machines = []
         self.forecast = pd.DataFrame()
+        self._is_built = False
+        self._payload = {}
         
     def add_machine(self, machine):
         self.machines.append(machine)
@@ -20,5 +22,7 @@ class Problem:
         if not forecast._is_interpolated:
             raise RuntimeError("Forecast must be interpolated first!")
         
+        self.forecast = forecast.forecast
+        
     def build(self):
-        self
+        print(self.forecast.head())
