@@ -61,3 +61,8 @@ class Solver:
             # Now prune down the machine productivity
             shift = np.array(shift)
             self._productivity_map[i] = self._productivity_map[i] * shift
+            
+        # df = pd.DataFrame(self._productivity_map)
+        # df.to_csv('prod_map.csv')
+        
+    
