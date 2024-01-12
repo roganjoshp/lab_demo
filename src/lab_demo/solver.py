@@ -3,8 +3,6 @@ from .util import chunk
 
 import random
 
-from collections import defaultdict
-
 import numpy as np
 import pandas as pd
 
@@ -41,9 +39,6 @@ class Solver:
         # Keep track of all machines
         self._machine_product_map = {}
         
-        # Store a list of product ids against a machine id
-        self._machine_products = {} 
-        
         # Simulated annealing params
         self.temperature = temperature
         self.cooling_rate = cooling_rate
@@ -55,6 +50,10 @@ class Solver:
         self._product_swaps = []
         self._possible_swap_indices = {}
         self._swap_indices = []
+        
+        # Solutions
+        self._solution = {}
+        self._best_ever_solution = {}
                
     def _disaggregate_forecast(self):
         """
@@ -97,10 +96,7 @@ class Solver:
             self._productivity_map[machine.id] = (
                 self._productivity_map[machine.id] * shift
             )
-            
-        # df = pd.DataFrame(self._productivity_map)
-        # df.to_csv('prod_map.csv')
-    
+
     def _create_product_swap_map(self):
         
         for machine in self.problem.machines:
@@ -148,8 +144,6 @@ class Solver:
             list(self._productivity_map.keys()), self.iterations, replace=True
         )
         
-        # print(self._machine_product_map)
-        
         # Product swaps are more difficult. Since the machine is not
         # specifically pre-determined, we need to iterate this one :(
         # We should actually calculate this in the solver loop itself because
@@ -167,6 +161,32 @@ class Solver:
                 self._possible_swap_indices[machine_id]
             )
             self._swap_indices.append(production_start)
+            
+    def create_initial_solution(self):
+        """
+        Generate a random starting solution
+        """
+        
+        # df = pd.DataFrame(self._demands)
+        # df.to_csv('demands.csv')
+        # df = pd.DataFrame(self._productivity_map)
+        # df.to_csv('productivity_map.csv')
+        
+        for machine_id, _ in self._productivity_map.items():
+            self._solution[machine_id] = np.zeros(len(self._forecast))
+            
+            for index in self._possible_swap_indices[machine_id]:
+                product = random.choice(self._machine_product_map[machine_id])
+                self._solution[machine_id][index:index+self.min_swap_hours] = (
+                    product
+                )
+        
+    def get_cost(self):
+        pass
+    
+    def solve(self):
+        pass
+        
     
     
             
