@@ -36,6 +36,10 @@ class Solver:
         # is how much stuff a machine can be making at that time
         self._productivity_map = {}
         
+        # Convert product names to ints
+        self._product_id_map = {}
+        self._produce_id_reverse_map = {}
+        
         # Keep track of all machines
         self._machine_product_map = {}
         
@@ -54,6 +58,7 @@ class Solver:
         # Solutions
         self._solution = {}
         self._best_ever_solution = {}
+        self._production_map = {}
                
     def _disaggregate_forecast(self):
         """
@@ -61,8 +66,11 @@ class Solver:
         """
         
         for i, column in enumerate(self._product_names):
-            self._demands[i] = self._forecast[column].values
-            self._product_name_map[column] = i
+            self._demands[column] = self._forecast[column].values
+            self._product_name_map[column] = column
+            # We want to reserve product 0 for downtime
+            self._product_id_map[column] = i + 1
+            self._produce_id_reverse_map[i+1] = column
         
     def _create_productivity_map(self):
         
@@ -167,22 +175,36 @@ class Solver:
         Generate a random starting solution
         """
         
-        # df = pd.DataFrame(self._demands)
-        # df.to_csv('demands.csv')
-        # df = pd.DataFrame(self._productivity_map)
-        # df.to_csv('productivity_map.csv')
+        df = pd.DataFrame(self._demands)
+        df.to_csv('demands.csv', index=False)
+        df = pd.DataFrame(self._productivity_map)
+        df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
             self._solution[machine_id] = np.zeros(len(self._forecast))
             
             for index in self._possible_swap_indices[machine_id]:
+                
                 product = random.choice(self._machine_product_map[machine_id])
+                product_id = self._product_id_map[product]
                 self._solution[machine_id][index:index+self.min_swap_hours] = (
-                    product
+                    product_id
                 )
         
-    def get_cost(self):
-        pass
+        # For human readability
+        # df = pd.DataFrame(self._solution)
+        # columns = df.columns
+        # for column in columns:
+        #     df[column] = df[column].map(self._produce_id_reverse_map)
+        # df.to_csv("solution.csv", index=False)
+        
+    def get_cost(
+        self,
+        product_id
+    ):
+        cost = 0
+        
+        demand = self._demands[product_id]
     
     def solve(self):
         pass
