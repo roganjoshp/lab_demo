@@ -162,3 +162,5 @@ cython_debug/
 # Annoying VSCode formatter
 .DS_Store
 *.DS_Store
+
+delete_me.py

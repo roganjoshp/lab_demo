@@ -1,4 +1,10 @@
-from lab_demo.config import Config
+from .config import Config
+from .util import chunk
+
+import random
+
+from itertools import groupby
+from operator import itemgetter
 
 import numpy as np
 import pandas as pd
@@ -12,12 +18,15 @@ class Solver:
         iterations = 10000,
         temperature = 10,
         cooling_rate = 0.9999,
+        turn_off_pct = 15,
+        min_swap_hours = 8,
         config: Config = Config()
     ):
         self.problem = problem
         self.config = config
         self._product_names = problem.forecast.columns
         self._forecast = self.problem.forecast.copy()
+        self.min_swap_hours = min_swap_hours
         
         # Map product names to an integer
         self._product_name_map = {}
@@ -35,6 +44,18 @@ class Solver:
         
         # Store a list of product ids against a machine id
         self._machine_products = {} 
+        
+        # Simulated annealing params
+        self.temperature = temperature
+        self.cooling_rate = cooling_rate
+        self.iterations = iterations
+        self.turn_off_pct = turn_off_pct / 100
+        
+        # Swaps
+        self._machine_swaps = []
+        self._product_swaps = []
+        self._possible_swap_indices = {}
+        self._swap_indices = []
                
     def _disaggregate_forecast(self):
         """
@@ -49,17 +70,17 @@ class Solver:
         
         # The first thing to do is to assume the machine can produce 24/7 at 
         # its ideal run rate
-        for i, machine in enumerate(self.problem.machines):
-            self._productivity_map[i] = np.full(
+        for machine in self.problem.machines:
+            self._productivity_map[machine.id] = np.full(
                 len(self._forecast) - 1, # We don't get the last hour 
                 machine.hourly_production
             )
         
-        self._forecast.to_csv('forecast.csv')
+        # self._forecast.to_csv('forecast.csv')
         
         # Now we need to overlay the shift patterns. They need to be expanded
         # out because they only cover a single week
-        for i, machine in enumerate(self.problem.machines):
+        for machine in self.problem.machines:
             shift = []
             week_shift = machine.shift_pattern
             # First flatten the dictionary to give us a single week
@@ -74,7 +95,9 @@ class Solver:
             
             # Now prune down the machine productivity
             shift = np.array(shift)
-            self._productivity_map[i] = self._productivity_map[i] * shift
+            self._productivity_map[machine.id] = (
+                self._productivity_map[machine.id] * shift
+            )
             
         # df = pd.DataFrame(self._productivity_map)
         # df.to_csv('prod_map.csv')
@@ -87,5 +110,57 @@ class Solver:
                 for product in machine._products
             ]
         
+    def _create_swaps(self):
         
+        # We know how many iterations we want to do, so we can pre-select all
+        # our machines in a single call. If we terminate early, it's still 
+        # quicker than calling random() on every iteration, so we can throw 
+        # them away
+        
+        self._machine_swaps = np.random.choice(
+            list(self._productivity_map.keys()), self.iterations, replace=True
+        )
+        
+        # print(self._machine_product_map)
+        
+        # Product swaps are more difficult. Since the machine is not
+        # specifically pre-determined, we need to iterate this one :(
+        # We should actually calculate this in the solver loop itself because
+        # of this, but it's cognitively simpler to do it here for the demo
+        for machine_id in self._machine_swaps:
+            possible_products = self._machine_product_map[machine_id]
+            if random.random() < self.turn_off_pct:
+                self._product_swaps.append(0)
+            else:
+                product = random.choice(possible_products)
+                self._product_swaps.append(product)
+    
+    def _find_swap_indices(self):
+        """ Return list of swappable indices for each machine 
+        
+        Given that machines only run for certain periods of the day AND the fact 
+        that there is a minimum amount of time that a machine can run one 
+        product before it can switch again, it's possible to target the indices
+        that are eligible to swap vs. just picking starting indices at random.
+        
+        Swapping at random gives a high chance of swapping in total downtime 
+        (useless) in addition to giving product swaps at weird intervals e.g.
+        one hour into a shift. This method is not without its flaws - it relies
+        on shifts being generally regular in rotation. This is generally true.
+        """
+        
+        for machine_id, productivity in self._productivity_map.items():
+            
+            starts = []
+            arr = productivity.nonzero()[0].tolist()
+            seen_indices = set()
+            
+            for index in arr:
+                if index not in seen_indices:
+                    starts.append(index)
+                    seen_indices.update(
+                        list(range(index, index + self.min_swap_hours))
+                    )
+            self._possible_swap_indices[machine_id] = starts
+            
     
