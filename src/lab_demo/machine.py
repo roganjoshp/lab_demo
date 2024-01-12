@@ -15,7 +15,7 @@ class Machine:
     ):
         self.config = config
         self._products = []
-        self._product_names = {}
+        self._product_names = set()
         
         if machine_id in self.seen_machine_ids:
             raise ValueError("Machine ID already specified!")

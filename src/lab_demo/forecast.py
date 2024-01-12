@@ -1,3 +1,5 @@
+from .products import Product
+
 import os
 import pathlib
 
@@ -57,6 +59,14 @@ class SalesForecast:
         self.forecast = self.forecast.resample(rule='H').interpolate()
         self._is_interpolated = True
         # print(self.forecast.head(10))
+    
+    def get_products(self):
+        
+        products = []
+        for product_name in self.base_forecast.columns:
+            products.append(Product(product_name))
+            
+        return products
     
 
 if __name__ == '__main__':

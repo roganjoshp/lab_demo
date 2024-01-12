@@ -9,6 +9,9 @@ from lab_demo import (
     Solver
 )
 
+import random
+
+
 # This is our container for all the moving parts. We just keep adding to it
 problem = Problem()
 
@@ -20,12 +23,34 @@ sales_forecast.interpolate_forecast()
 # because it hasn't been interpolated first. It can see its *state*
 problem.add_forecast(sales_forecast)
 
+# Retrieve the products using a helper function, to give everything in the 
+# forecast
+products = sales_forecast.get_products()
+print(products)
+
+# Create machines and add a random assortment of possible products to them
 # Try setting machine_id as duplicate values
 machine_1 = Machine(machine_id=1, shift_pattern='6-2')
-machine_2 = Machine(machine_id=2, shift_pattern='2-10')
-machine_3 = Machine(machine_id=3, shift_pattern='6-2 and 2-10')
-machine_4 = Machine(machine_id=4, shift_pattern='2-10')
+mach_1_prods = random.choices(products, k=random.randint(1,4))
+for product in mach_1_prods:
+    machine_1.add_product(product)
 
+machine_2 = Machine(machine_id=2, shift_pattern='2-10')
+mach_2_prods = random.choices(products, k=random.randint(1,4))
+for product in mach_2_prods:
+    machine_2.add_product(product)
+    
+machine_3 = Machine(machine_id=3, shift_pattern='6-2 and 2-10')
+mach_3_prods = random.choices(products, k=random.randint(1,4))
+for product in mach_3_prods:
+    machine_3.add_product(product)
+    
+machine_4 = Machine(machine_id=4, shift_pattern='2-10')
+mach_4_prods = random.choices(products, k=random.randint(1,4))
+for product in mach_4_prods:
+    machine_4.add_product(product)
+
+# Again, everything goes into our container instance of Problem
 problem.add_machine(machine_1)
 problem.add_machine(machine_2)
 problem.add_machine(machine_3)
