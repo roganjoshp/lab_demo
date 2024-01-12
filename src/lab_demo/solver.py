@@ -3,8 +3,7 @@ from .util import chunk
 
 import random
 
-from itertools import groupby
-from operator import itemgetter
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -109,32 +108,7 @@ class Solver:
                 self._product_name_map[product.name] 
                 for product in machine._products
             ]
-        
-    def _create_swaps(self):
-        
-        # We know how many iterations we want to do, so we can pre-select all
-        # our machines in a single call. If we terminate early, it's still 
-        # quicker than calling random() on every iteration, so we can throw 
-        # them away
-        
-        self._machine_swaps = np.random.choice(
-            list(self._productivity_map.keys()), self.iterations, replace=True
-        )
-        
-        # print(self._machine_product_map)
-        
-        # Product swaps are more difficult. Since the machine is not
-        # specifically pre-determined, we need to iterate this one :(
-        # We should actually calculate this in the solver loop itself because
-        # of this, but it's cognitively simpler to do it here for the demo
-        for machine_id in self._machine_swaps:
-            possible_products = self._machine_product_map[machine_id]
-            if random.random() < self.turn_off_pct:
-                self._product_swaps.append(0)
-            else:
-                product = random.choice(possible_products)
-                self._product_swaps.append(product)
-    
+            
     def _find_swap_indices(self):
         """ Return list of swappable indices for each machine 
         
@@ -162,5 +136,38 @@ class Solver:
                         list(range(index, index + self.min_swap_hours))
                     )
             self._possible_swap_indices[machine_id] = starts
+        
+    def _create_swaps(self):
+        
+        # We know how many iterations we want to do, so we can pre-select all
+        # our machines in a single call. If we terminate early, it's still 
+        # quicker than calling random() on every iteration, so we can throw 
+        # them away
+        
+        self._machine_swaps = np.random.choice(
+            list(self._productivity_map.keys()), self.iterations, replace=True
+        )
+        
+        # print(self._machine_product_map)
+        
+        # Product swaps are more difficult. Since the machine is not
+        # specifically pre-determined, we need to iterate this one :(
+        # We should actually calculate this in the solver loop itself because
+        # of this, but it's cognitively simpler to do it here for the demo
+        for machine_id in self._machine_swaps:
+            possible_products = self._machine_product_map[machine_id]
+            if random.random() < self.turn_off_pct:
+                self._product_swaps.append(0)
+            else:
+                product = random.choice(possible_products)
+                self._product_swaps.append(product)
+        
+            # Now find where we want to put the product
+            production_start = random.choice(
+                self._possible_swap_indices[machine_id]
+            )
+            self._swap_indices.append(production_start)
+    
+    
             
     
