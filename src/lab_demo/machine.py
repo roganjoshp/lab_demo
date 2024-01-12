@@ -23,8 +23,6 @@ class Machine:
         self._products = []
         self._product_names = set()
         
-        
-        
         if shift_pattern not in self.config.SHIFT_PATTERNS:
             raise ValueError("Shift pattern not recognised!")
         

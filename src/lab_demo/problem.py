@@ -25,5 +25,4 @@ class Problem:
         self.forecast = forecast.forecast
         
     def build(self):
-        pass
-        # print(self.forecast.head())
+        self._is_built = True

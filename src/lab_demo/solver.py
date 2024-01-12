@@ -175,10 +175,10 @@ class Solver:
         Generate a random starting solution
         """
         
-        df = pd.DataFrame(self._demands)
-        df.to_csv('demands.csv', index=False)
-        df = pd.DataFrame(self._productivity_map)
-        df.to_csv('productivity_map.csv', index=False)
+        # df = pd.DataFrame(self._demands)
+        # df.to_csv('demands.csv', index=False)
+        # df = pd.DataFrame(self._productivity_map)
+        # df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
             self._solution[machine_id] = np.zeros(len(self._forecast))
@@ -200,7 +200,8 @@ class Solver:
         
     def get_cost(
         self,
-        product_id
+        product_id,
+        swap_index
     ):
         cost = 0
         
