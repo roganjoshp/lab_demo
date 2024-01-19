@@ -57,11 +57,13 @@ problem.add_machine(machine_4)
 
 problem.build()
 
-solver = Solver(problem=problem)
-solver._disaggregate_forecast()
-solver._create_productivity_map()
-solver._create_product_swap_map()
-solver._find_swap_indices()
-solver._create_swaps()
-solver.create_initial_solution()
+solver = Solver(
+    problem=problem,
+    iterations=100,
+    temperature=10,
+    cooling_rate=0.9,
+    turn_off_pct=15)
+
 solver.solve()
+
+solver.plot_solution_convergence()

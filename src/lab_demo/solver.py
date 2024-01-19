@@ -19,10 +19,10 @@ class Solver:
     def __init__(
         self,
         problem,
-        iterations = 10000,
-        temperature = 0.1,
-        cooling_rate = 0.999,
-        turn_off_pct = 15,
+        iterations,
+        temperature,
+        cooling_rate,
+        turn_off_pct,
         min_swap_hours = 8,
         overproduction_penalty = 1,
         missed_production_penalty = 15,
@@ -33,9 +33,6 @@ class Solver:
         self._product_names = problem.forecast.columns
         self._forecast = self.problem.forecast.copy()
         self.min_swap_hours = min_swap_hours
-        
-        # Map product names to an integer
-        self._product_name_map = {}
         
         # Input data containers
         self._demands = {}
@@ -50,7 +47,7 @@ class Solver:
         # self._produce_id_reverse_map = {}
         
         # Keep track of all machines
-        self._machine_orr = self.config.MACHINE_STATS
+        self._machine_irr = self.config.MACHINE_STATS
         self._machine_product_map = {}
         
         # Simulated annealing params
@@ -77,31 +74,29 @@ class Solver:
         self._solution_costs = []
         self._product_cost_contributions = {}
         self._production_map = {}
+        
+        self._solved = False
                
     def _disaggregate_forecast(self):
         """
         Get an object of {machine_id: [hourly_demands]}
         """
         
-        for i, column in enumerate(self._product_names):
+        for column in self._product_names:
             self._demands[column] = (self._forecast[column] * 100).values
             self._demands[column] = self._demands[column].astype(np.float64)
-            self._product_name_map[column] = column
-            # We want to reserve product 0 for downtime
-            # self._product_id_map[column] = i + 1
-            # self._produce_id_reverse_map[i+1] = column
-        
+            
     def _create_productivity_map(self):
         
         # The first thing to do is to assume the machine can produce 24/7 at 
-        # its ideal run rate
+        # its ideal run rate, so fill the PRODUCTIVITY map at max capacity
         for machine in self.problem.machines:
             self._productivity_map[machine.id] = np.full(
                 len(self._forecast) - 1, # We don't get the last hour 
                 machine.hourly_production
             )
         
-        # Initialise the actual production to be zeros while we're here
+        # Initialise the actual PRODUCTION to be zeros while we're here
         for product, hours in self._demands.items():
             self._production_map[product] = np.zeros(
                 len(hours),
@@ -128,7 +123,11 @@ class Solver:
             for x in range(num_weeks - 1): # We already have the first week
                 shift += week_shift
             
-            # Now prune down the machine productivity
+            # Now prune down the machine productivity. We use the shift pattern
+            # as a mask over the previous array simply through multiplication.
+            # When the machine is on, you multiply by 1 and otherwise it gets
+            # multiplied by 0. If there is a half hour break in between, then
+            # productivity is multiplied by 0.5 etc.
             shift = np.array(shift)
             self._productivity_map[machine.id] = (
                 (self._productivity_map[machine.id] * shift).astype(np.float64)
@@ -138,8 +137,7 @@ class Solver:
         
         for machine in self.problem.machines:
             self._machine_product_map[machine.id] = [
-                self._product_name_map[product.name] 
-                for product in machine._products
+                product.name for product in machine._products
             ]
             
     def _find_swap_indices(self):
@@ -199,7 +197,7 @@ class Solver:
             )
             self._swap_indices.append(production_start)
             
-    def create_initial_solution(self):
+    def _create_initial_solution(self):
         """
         Generate a random starting solution
         """
@@ -226,7 +224,7 @@ class Solver:
                 )
                 
                 self._production_map[product][index:index+hour_block] += (
-                    self._machine_orr[machine_id]['ideal_run_rate']
+                    self._machine_irr[machine_id]['ideal_run_rate']
                 )
         
         df = pd.DataFrame(self._production_map)
@@ -253,7 +251,6 @@ class Solver:
             self._product_cost_contributions[product] = cost
             total_cost += cost
         
-        # print(self._product_cost_contributions)
         return total_cost
         
     def get_cost(
@@ -295,13 +292,13 @@ class Solver:
         # want to swap to Product_1 then that's pointless, so break out
         current_product = self._solution[machine][start_index]
         if new_product == current_product:
-            print("SHORT CIRCUIT")
             return
         
         # Initialise both just incase either the old or the new product is "0"
         swap_out_cost = 0
         swap_in_cost = 0
         
+        # Does this swap improve or degrade our solution?
         cost_movement = 0
         
         machine_solution = self._solution[machine].copy()
@@ -317,6 +314,8 @@ class Solver:
         hourly_prod = shift_prod.cumsum()
         total_prod = shift_prod.sum()
         
+        # TODO this is bad design on the fact I have ints and strings coming
+        # through here but no time yet to see where this happens
         if current_product != 0 and current_product != '0':
             
             # Make sure we don't trample our global state in case we don't want 
@@ -374,6 +373,13 @@ class Solver:
         return rtn
         
     def solve(self):
+        
+        self._disaggregate_forecast()
+        self._create_productivity_map()
+        self._create_product_swap_map()
+        self._find_swap_indices()
+        self._create_swaps()
+        self._create_initial_solution()
         
         # Initialise our best solution and cost 
         self._best_ever_solution = self._solution.copy()
@@ -460,6 +466,13 @@ class Solver:
                         self._solution_costs.append([x, _current_cost])
                     
             self.temperature *= self.cooling_rate
+        
+        self._solved = True
+            
+    def plot_solution_convergence(self):
+        
+        if not self._solved:
+            raise RuntimeError("Problem has not been solved!")
                     
         iterations = [item[0] for item in self._solution_costs]
         costs = [item[1] for item in self._solution_costs]
@@ -467,5 +480,3 @@ class Solver:
         plt.plot(iterations, costs)
         plt.show()
         
-        # df = pd.DataFrame(self._solution)
-        # df.to_csv('solved_problem.csv')
