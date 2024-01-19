@@ -16,7 +16,7 @@ class Solver:
     def __init__(
         self,
         problem,
-        iterations = 10000,
+        iterations = 10,
         temperature = 10,
         cooling_rate = 0.9999,
         turn_off_pct = 15,
@@ -69,6 +69,8 @@ class Solver:
         # Solutions
         self._solution = {}
         self._best_ever_solution = {}
+        self._best_ever_cost = np.inf
+        self._solution_costs = []
         self._product_cost_contributions = {}
         self._production_map = {}
                
@@ -200,7 +202,10 @@ class Solver:
         df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
-            self._solution[machine_id] = np.full(len(self._forecast), "")
+            self._solution[machine_id] = np.full(
+                len(self._forecast), "",
+                dtype="U20"
+            )
             
             for index in self._possible_swap_indices[machine_id]:
                 
@@ -230,7 +235,7 @@ class Solver:
         df = pd.DataFrame(self._solution)
         df.to_csv("solution.csv", index=False)
         
-    def get_initial_solution_cost(self):
+    def _get_initial_solution_cost(self):
         
         for product in self._production_map.keys():
             cost = self.get_cost(product)
@@ -263,9 +268,55 @@ class Solver:
         cost += overproduction
         
         return cost
+    
+    def _do_swap(
+        self,
+        machine,
+        start_index,
+        new_product
+    ):
+        
+        # First add a short-circuit. If we're already making Product_1 and we 
+        # want to swap to Product_1 then that's pointless, so break out
+        current_product = self._solution[machine][start_index]
+        if new_product == current_product:
+            return
+         
+        shift_end = start_index + self.min_swap_hours
+        
+        # Find the machine productivity for the shift we want to swap out
+        shift_prod = self._productivity_map[machine][start_index:shift_end]
+        
+        # Find the total production that will be swapped from one product to 
+        # another by changing this machine's schedule
+        total_prod = shift_prod.sum()
+        
+        
+        
         
     def solve(self):
-        pass
+        
+        # Initialise our best solution and cost 
+        self._best_ever_solution = self._solution.copy()
+        self._best_ever_cost = self._get_initial_solution_cost()
+        
+        for x in range(self.iterations):
+            
+            # First pick our machine to target in this atomic swap
+            machine_swap = self._machine_swaps[x]
+            
+            # Now find the start hour of the production we want to swap
+            hour = self._swap_indices[x]
+            
+            # Find the product we want to swap to
+            swapped_product = self._product_swaps[x]
+            
+            self._do_swap(machine_swap, hour, swapped_product)
+            
+            
+            
+            
+            
         
     
     
