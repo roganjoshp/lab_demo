@@ -276,18 +276,31 @@ class Solver:
         new_product
     ):
         
+        # Payload we want to send back
+        rtn = {}
+        
         # First add a short-circuit. If we're already making Product_1 and we 
         # want to swap to Product_1 then that's pointless, so break out
         current_product = self._solution[machine][start_index]
         if new_product == current_product:
             return
         
-        if current_product != 0:
+        # Initialise both just incase either the old or the new product is "0"
+        swap_out_cost = 0
+        swap_in_cost = 0
         
+        cost_movement = 0
+        
+        machine_solution = self._solution[machine].copy()
+        
+        if current_product != 0:
+            
             # Make sure we don't trample our global state in case we don't want 
             # to accept this new solution
-            old_prod_production = self._production_map[current_product].copy()
-            
+            current_prod_production = (
+                self._production_map[current_product].copy()
+            )
+        
             # The end of the slice we want to look at
             shift_end = start_index + self.min_swap_hours
             
@@ -300,23 +313,49 @@ class Solver:
             total_prod = shift_prod.sum()
             
             # First snip out the PRODUCTION from the existing product
-            old_prod_production[start_index:shift_end] -= hourly_prod
-            old_prod_production[start_index+shift_end:] -= total_prod
+            current_prod_production[start_index:shift_end] -= hourly_prod
+            current_prod_production[start_index+shift_end:] -= total_prod
             
             # Find the new solution cost for this loss of productivity
-            swap_out_cost = self.get_cost(current_product, old_prod_production)
+            swap_out_cost = self.get_cost(
+                current_product,
+                current_prod_production
+            )
+            current_prod_existing_cost = (
+                self._product_cost_contributions[current_product]
+            )
+            
+            cost_movement += swap_out_cost - current_prod_existing_cost
+            
+            rtn['current_prod_production'] = current_prod_production
+            rtn['current_prod_cost_contrib'] = swap_out_cost
         
         if new_product != 0:
             
-            # Again, don't want to trample our global state
             new_prod_production = self._production_map[new_product].copy()
-            
+
             # Now add in the production of the new product
             new_prod_production[start_index:shift_end] += hourly_prod
             new_prod_production[start_index+shift_end:] += total_prod
             
             swap_in_cost = self.get_cost(new_product, new_prod_production)
+            new_prod_existing_cost = (
+                self._product_cost_contributions[new_product]
+            )
+
+            cost_movement += swap_in_cost - new_prod_existing_cost
+            
+            rtn['new_prod_production'] = new_prod_production
+            rtn['new_prod_cost_contrib'] = swap_in_cost
+            
+        # Reflect the change in the solution itself
+        machine_solution[start_index:shift_end] = new_product
         
+        rtn['current_product'] = current_product
+        rtn['new_solution'] = machine_solution
+        rtn['cost_movement'] = cost_movement
+        
+        return rtn
         
     def solve(self):
         
@@ -333,11 +372,13 @@ class Solver:
             hour = self._swap_indices[x]
             
             # Find the product we want to swap to
-            swapped_product = self._product_swaps[x]
+            new_product = self._product_swaps[x]
             
-            self._do_swap(machine_swap, hour, swapped_product)
+            print("PARAMS", machine_swap, hour, new_product)
             
-            
+            change = self._do_swap(machine_swap, hour, new_product)
+            if change is not None:
+                print('***', change['current_product'], new_product, change['cost_movement'])
             
             
             
