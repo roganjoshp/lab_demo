@@ -5,6 +5,7 @@ from math import exp
 
 import random
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -18,8 +19,8 @@ class Solver:
     def __init__(
         self,
         problem,
-        iterations = 100,
-        temperature = 10,
+        iterations = 10000,
+        temperature = 0.1,
         cooling_rate = 0.999,
         turn_off_pct = 15,
         min_swap_hours = 8,
@@ -418,7 +419,7 @@ class Solver:
                         change['new_solution'].copy()
                     )
                     _current_cost += change['cost_movement']
-                    self._solution_costs.append(_current_cost)
+                    self._solution_costs.append([x, _current_cost])
                     
                     # Check if we beat our best ever
                     if _current_cost < self._best_ever_cost:
@@ -456,18 +457,15 @@ class Solver:
                             change['new_solution'].copy()
                         )
                         _current_cost += change['cost_movement']
-                        self._solution_costs.append(_current_cost)
+                        self._solution_costs.append([x, _current_cost])
                     
             self.temperature *= self.cooling_rate
                     
+        iterations = [item[0] for item in self._solution_costs]
+        costs = [item[1] for item in self._solution_costs]
+        
+        plt.plot(iterations, costs)
+        plt.show()
         
         # df = pd.DataFrame(self._solution)
         # df.to_csv('solved_problem.csv')
-            
-            
-            
-        
-    
-    
-            
-    

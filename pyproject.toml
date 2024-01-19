@@ -11,6 +11,7 @@ version = "0.0.1"
 description = "A machine scheduling library"
 dependencies = [
     "pandas>=2.1.2",
+    "matplotlib"
 ]
 readme="README.md"
 requires-python = ">=3.8"
