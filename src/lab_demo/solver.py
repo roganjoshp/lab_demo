@@ -20,7 +20,7 @@ class Solver:
         problem,
         iterations = 100,
         temperature = 10,
-        cooling_rate = 0.9999,
+        cooling_rate = 0.999,
         turn_off_pct = 15,
         min_swap_hours = 8,
         overproduction_penalty = 1,
@@ -402,9 +402,16 @@ class Solver:
                         self._production_map[old_product] = (
                             change['current_prod_production'].copy()
                         )
+                        self._product_cost_contributions[old_product] = (
+                            change['current_prod_cost_contrib']
+                        )
+                        
                     if new_product != 0:
                         self._production_map[new_product] = (
                             change['new_prod_production'].copy()
+                        )
+                        self._product_cost_contributions[new_product] = (
+                            change['new_prod_cost_contrib']
                         )
                         
                     self._solution[machine_swap] = (
@@ -412,13 +419,46 @@ class Solver:
                     )
                     _current_cost += change['cost_movement']
                     self._solution_costs.append(_current_cost)
-                
+                    
+                    # Check if we beat our best ever
+                    if _current_cost < self._best_ever_cost:
+                        self._best_ever_cost = _current_cost
+                        self._best_ever_solution = self._solution.copy()
+                    
                 else:
                     # MAYBE accept the solution
                     dice_roll = self.dice_rolls[x]
                     
+                    acceptance = exp(
+                        (-change['cost_movement'] / _current_cost ) * 100
+                      / self.temperature + 0.00001)
                     
+                    if dice_roll < acceptance:
+                        old_product = change['current_product']
+                        
+                        if old_product != 0:
+                            self._production_map[old_product] = (
+                                change['current_prod_production'].copy()
+                            )
+                            self._product_cost_contributions[old_product] = (
+                                change['current_prod_cost_contrib']
+                            )
+                            
+                        if new_product != 0:
+                            self._production_map[new_product] = (
+                                change['new_prod_production'].copy()
+                            )
+                            self._product_cost_contributions[new_product] = (
+                                change['new_prod_cost_contrib']
+                            )
+                            
+                        self._solution[machine_swap] = (
+                            change['new_solution'].copy()
+                        )
+                        _current_cost += change['cost_movement']
+                        self._solution_costs.append(_current_cost)
                     
+            self.temperature *= self.cooling_rate
                     
         
         # df = pd.DataFrame(self._solution)
