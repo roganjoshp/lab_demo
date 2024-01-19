@@ -7,6 +7,10 @@ import numpy as np
 import pandas as pd
 
 
+# For testing so our CSVs will line up
+np.random.seed(42)
+
+
 class Solver:
     
     def __init__(
@@ -17,6 +21,8 @@ class Solver:
         cooling_rate = 0.9999,
         turn_off_pct = 15,
         min_swap_hours = 8,
+        overproduction_penalty = 1,
+        missed_production_penalty = 15,
         config: Config = Config()
     ):
         self.problem = problem
@@ -36,9 +42,9 @@ class Solver:
         # is how much stuff a machine can be making at that time
         self._productivity_map = {}
         
-        # Convert product names to ints
-        self._product_id_map = {}
-        self._produce_id_reverse_map = {}
+        # # Convert product names to ints
+        # self._product_id_map = {}
+        # self._produce_id_reverse_map = {}
         
         # Keep track of all machines
         self._machine_orr = self.config.MACHINE_STATS
@@ -50,6 +56,10 @@ class Solver:
         self.iterations = iterations
         self.turn_off_pct = turn_off_pct / 100
         
+        # Algo params
+        self.overproduction_penalty = overproduction_penalty
+        self.missed_production_penalty = missed_production_penalty
+        
         # Swaps
         self._machine_swaps = []
         self._product_swaps = []
@@ -59,6 +69,7 @@ class Solver:
         # Solutions
         self._solution = {}
         self._best_ever_solution = {}
+        self._product_cost_contributions = {}
         self._production_map = {}
                
     def _disaggregate_forecast(self):
@@ -70,8 +81,8 @@ class Solver:
             self._demands[column] = self._forecast[column].values
             self._product_name_map[column] = column
             # We want to reserve product 0 for downtime
-            self._product_id_map[column] = i + 1
-            self._produce_id_reverse_map[i+1] = column
+            # self._product_id_map[column] = i + 1
+            # self._produce_id_reverse_map[i+1] = column
         
     def _create_productivity_map(self):
         
@@ -83,9 +94,9 @@ class Solver:
                 machine.hourly_production
             )
         
-        # Initialise the actual production to be zeros
-        for product_id, hours in self._demands.items():
-            self._production_map[product_id] = np.zeros(len(hours))
+        # Initialise the actual production to be zeros while we're here
+        for product, hours in self._demands.items():
+            self._production_map[product] = np.zeros(len(hours))
 
         df = pd.DataFrame(self._production_map)
         df.to_csv('production_map.csv')
@@ -189,44 +200,70 @@ class Solver:
         df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
-            self._solution[machine_id] = np.zeros(len(self._forecast))
+            self._solution[machine_id] = np.full(len(self._forecast), "")
             
             for index in self._possible_swap_indices[machine_id]:
                 
                 product = random.choice(self._machine_product_map[machine_id])
-                product_id = self._product_id_map[product]
-                self._solution[machine_id][index:index+self.min_swap_hours] = (
-                    product_id
+
+                hour_block = self.min_swap_hours
+                
+                self._solution[machine_id][index:index+hour_block] = (
+                    product
                 )
-                # print("PRODUCT", product)
-                # print("PRODUCT ID", product_id)
-                # print("PROD MAP", self._production_map[product])
-                # print("INDEX", index)
-                # print("MIN SWAP", self.min_swap_hours)
-                self._production_map[product][index:index+self.min_swap_hours] += (
+                
+                self._production_map[product][index:index+hour_block] += (
                     self._machine_orr[machine_id]['ideal_run_rate']
                 )
-        
-        # For human readability
-        df = pd.DataFrame(self._solution)
-        columns = df.columns
-        for column in columns:
-            df[column] = df[column].map(self._produce_id_reverse_map)
-        df.to_csv("solution.csv", index=False)
         
         df = pd.DataFrame(self._production_map)
         df.to_csv('initial_solution_production_map.csv')
         
+        # Now need to cumsum up the production
+        for product, production in self._production_map.items():
+            self._production_map[product] = production.cumsum()
+            
+        df = pd.DataFrame(self._production_map)
+        df.to_csv('cumulative_production.csv', index=False)
+        
+        # For human readability
+        df = pd.DataFrame(self._solution)
+        df.to_csv("solution.csv", index=False)
+        
+    def get_initial_solution_cost(self):
+        
+        for product in self._production_map.keys():
+            cost = self.get_cost(product)
+            self._product_cost_contributions[product] = cost
+        
+        print(self._product_cost_contributions)
+        
         
     def get_cost(
         self,
-        product_id,
-        swap_index
+        product,
     ):
         cost = 0
         
-        demand = self._demands[product_id]
-    
+        demand = self._demands[product]
+        production = self._production_map[product]
+        
+        missed_production = (
+            (demand - production).clip(0).sum() 
+            * self.missed_production_penalty
+        )
+        
+        cost += missed_production
+        
+        overproduction = (
+            (production - demand).clip(0).sum() 
+            * self.overproduction_penalty
+        )
+        
+        cost += overproduction
+        
+        return cost
+        
     def solve(self):
         pass
         
