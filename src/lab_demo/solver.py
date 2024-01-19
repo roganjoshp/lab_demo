@@ -1,6 +1,8 @@
 from .config import Config
 from .util import chunk
 
+from math import exp
+
 import random
 
 import numpy as np
@@ -16,7 +18,7 @@ class Solver:
     def __init__(
         self,
         problem,
-        iterations = 10,
+        iterations = 100,
         temperature = 10,
         cooling_rate = 0.9999,
         turn_off_pct = 15,
@@ -55,6 +57,7 @@ class Solver:
         self.cooling_rate = cooling_rate
         self.iterations = iterations
         self.turn_off_pct = turn_off_pct / 100
+        self.dice_rolls = np.random.random(size=self.iterations)
         
         # Algo params
         self.overproduction_penalty = overproduction_penalty
@@ -241,12 +244,16 @@ class Solver:
         
     def _get_initial_solution_cost(self):
         
+        total_cost = 0
+        
         for product in self._production_map.keys():
             production = self._production_map[product]
             cost = self.get_cost(product, production)
             self._product_cost_contributions[product] = cost
+            total_cost += cost
         
-        print(self._product_cost_contributions)
+        # print(self._product_cost_contributions)
+        return total_cost
         
     def get_cost(
         self,
@@ -309,7 +316,7 @@ class Solver:
         hourly_prod = shift_prod.cumsum()
         total_prod = shift_prod.sum()
         
-        if current_product != 0:
+        if current_product != 0 and current_product != '0':
             
             # Make sure we don't trample our global state in case we don't want 
             # to accept this new solution
@@ -339,7 +346,7 @@ class Solver:
         else:
             rtn['current_product'] = 0
         
-        if new_product != 0:
+        if new_product != 0 and new_product != "0":
             
             new_prod_production = self._production_map[new_product].copy()
 
@@ -390,10 +397,32 @@ class Solver:
                     # Accept the solution unconditionally
                     
                     old_product = change['current_product']
+                    
                     if old_product != 0:
-                        self._production_map[old_product] = change['current_prod_production'].copy()
+                        self._production_map[old_product] = (
+                            change['current_prod_production'].copy()
+                        )
                     if new_product != 0:
-                        self._production_map[new_product] = change['new_prod_production'].copy()
+                        self._production_map[new_product] = (
+                            change['new_prod_production'].copy()
+                        )
+                        
+                    self._solution[machine_swap] = (
+                        change['new_solution'].copy()
+                    )
+                    _current_cost += change['cost_movement']
+                    self._solution_costs.append(_current_cost)
+                
+                else:
+                    # MAYBE accept the solution
+                    dice_roll = self.dice_rolls[x]
+                    
+                    
+                    
+                    
+        
+        # df = pd.DataFrame(self._solution)
+        # df.to_csv('solved_problem.csv')
             
             
             
