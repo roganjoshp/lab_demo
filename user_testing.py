@@ -66,4 +66,4 @@ solver = Solver(
 
 solver.solve()
 
-solver.plot_solution_convergence()
+# solver.plot_solution_convergence()
