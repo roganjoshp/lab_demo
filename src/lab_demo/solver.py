@@ -238,20 +238,20 @@ class Solver:
     def _get_initial_solution_cost(self):
         
         for product in self._production_map.keys():
-            cost = self.get_cost(product)
+            production = self._production_map[product]
+            cost = self.get_cost(product, production)
             self._product_cost_contributions[product] = cost
         
         print(self._product_cost_contributions)
         
-        
     def get_cost(
         self,
         product,
+        production
     ):
         cost = 0
         
         demand = self._demands[product]
-        production = self._production_map[product]
         
         missed_production = (
             (demand - production).clip(0).sum() 
@@ -281,17 +281,41 @@ class Solver:
         current_product = self._solution[machine][start_index]
         if new_product == current_product:
             return
-         
-        shift_end = start_index + self.min_swap_hours
         
-        # Find the machine productivity for the shift we want to swap out
-        shift_prod = self._productivity_map[machine][start_index:shift_end]
+        if current_product != 0:
         
-        # Find the total production that will be swapped from one product to 
-        # another by changing this machine's schedule
-        total_prod = shift_prod.sum()
+            # Make sure we don't trample our global state in case we don't want 
+            # to accept this new solution
+            old_prod_production = self._production_map[current_product].copy()
+            
+            # The end of the slice we want to look at
+            shift_end = start_index + self.min_swap_hours
+            
+            # Find the machine PRODUCTIVITY for the shift we want to swap
+            shift_prod = self._productivity_map[machine][start_index:shift_end]
+            
+            # Find the total PRODUCTION that will be lost from one product to 
+            # be gained by another, by changing this machine's schedule
+            hourly_prod = shift_prod.cumsum()
+            total_prod = shift_prod.sum()
+            
+            # First snip out the PRODUCTION from the existing product
+            old_prod_production[start_index:shift_end] -= hourly_prod
+            old_prod_production[start_index+shift_end:] -= total_prod
+            
+            # Find the new solution cost for this loss of productivity
+            swap_out_cost = self.get_cost(current_product, old_prod_production)
         
-        
+        if new_product != 0:
+            
+            # Again, don't want to trample our global state
+            new_prod_production = self._production_map[new_product].copy()
+            
+            # Now add in the production of the new product
+            new_prod_production[start_index:shift_end] += hourly_prod
+            new_prod_production[start_index+shift_end:] += total_prod
+            
+            swap_in_cost = self.get_cost(new_product, new_prod_production)
         
         
     def solve(self):
