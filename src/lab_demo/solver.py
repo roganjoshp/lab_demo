@@ -95,17 +95,18 @@ class Solver:
                 len(self._forecast) - 1, # We don't get the last hour 
                 machine.hourly_production
             )
+            
+        df = pd.DataFrame(self._productivity_map)
+        df.to_csv('initial_productivity_map.csv', index=False)
         
         # Initialise the actual PRODUCTION to be zeros while we're here
+        # So far we haven't assigned the machine to any product
         for product, hours in self._demands.items():
             self._production_map[product] = np.zeros(
                 len(hours),
                 dtype=np.float64
             )
 
-        df = pd.DataFrame(self._production_map)
-        df.to_csv('production_map.csv')
-        
         self._forecast.to_csv('forecast.csv')
         
         # Now we need to overlay the shift patterns. They need to be expanded
@@ -132,6 +133,9 @@ class Solver:
             self._productivity_map[machine.id] = (
                 (self._productivity_map[machine.id] * shift).astype(np.float64)
             )
+            
+        df = pd.DataFrame(self._productivity_map)
+        df.to_csv('productivity_map.csv', index=False)
 
     def _create_product_swap_map(self):
         
@@ -201,11 +205,6 @@ class Solver:
         """
         Generate a random starting solution
         """
-        
-        df = pd.DataFrame(self._demands)
-        df.to_csv('demands.csv', index=False)
-        df = pd.DataFrame(self._productivity_map)
-        df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
             self._solution[machine_id] = np.full(
