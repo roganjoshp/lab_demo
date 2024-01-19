@@ -80,7 +80,8 @@ class Solver:
         """
         
         for i, column in enumerate(self._product_names):
-            self._demands[column] = self._forecast[column].values
+            self._demands[column] = (self._forecast[column] * 100).values
+            self._demands[column] = self._demands[column].astype(np.float64)
             self._product_name_map[column] = column
             # We want to reserve product 0 for downtime
             # self._product_id_map[column] = i + 1
@@ -98,7 +99,10 @@ class Solver:
         
         # Initialise the actual production to be zeros while we're here
         for product, hours in self._demands.items():
-            self._production_map[product] = np.zeros(len(hours))
+            self._production_map[product] = np.zeros(
+                len(hours),
+                dtype=np.float64
+            )
 
         df = pd.DataFrame(self._production_map)
         df.to_csv('production_map.csv')
@@ -123,7 +127,7 @@ class Solver:
             # Now prune down the machine productivity
             shift = np.array(shift)
             self._productivity_map[machine.id] = (
-                self._productivity_map[machine.id] * shift
+                (self._productivity_map[machine.id] * shift).astype(np.float64)
             )
 
     def _create_product_swap_map(self):
@@ -283,6 +287,7 @@ class Solver:
         # want to swap to Product_1 then that's pointless, so break out
         current_product = self._solution[machine][start_index]
         if new_product == current_product:
+            print("SHORT CIRCUIT")
             return
         
         # Initialise both just incase either the old or the new product is "0"
@@ -293,6 +298,17 @@ class Solver:
         
         machine_solution = self._solution[machine].copy()
         
+        # The end of the slice we want to look at
+        shift_end = start_index + self.min_swap_hours
+        
+        # Find the machine PRODUCTIVITY for the shift we want to swap
+        shift_prod = self._productivity_map[machine][start_index:shift_end]
+        
+        # Find the total PRODUCTION that will be lost from one product to 
+        # be gained by another, by changing this machine's schedule
+        hourly_prod = shift_prod.cumsum()
+        total_prod = shift_prod.sum()
+        
         if current_product != 0:
             
             # Make sure we don't trample our global state in case we don't want 
@@ -300,18 +316,7 @@ class Solver:
             current_prod_production = (
                 self._production_map[current_product].copy()
             )
-        
-            # The end of the slice we want to look at
-            shift_end = start_index + self.min_swap_hours
-            
-            # Find the machine PRODUCTIVITY for the shift we want to swap
-            shift_prod = self._productivity_map[machine][start_index:shift_end]
-            
-            # Find the total PRODUCTION that will be lost from one product to 
-            # be gained by another, by changing this machine's schedule
-            hourly_prod = shift_prod.cumsum()
-            total_prod = shift_prod.sum()
-            
+                    
             # First snip out the PRODUCTION from the existing product
             current_prod_production[start_index:shift_end] -= hourly_prod
             current_prod_production[start_index+shift_end:] -= total_prod
@@ -329,6 +334,10 @@ class Solver:
             
             rtn['current_prod_production'] = current_prod_production
             rtn['current_prod_cost_contrib'] = swap_out_cost
+            rtn['current_product'] = current_product
+            
+        else:
+            rtn['current_product'] = 0
         
         if new_product != 0:
             
@@ -351,7 +360,6 @@ class Solver:
         # Reflect the change in the solution itself
         machine_solution[start_index:shift_end] = new_product
         
-        rtn['current_product'] = current_product
         rtn['new_solution'] = machine_solution
         rtn['cost_movement'] = cost_movement
         
@@ -362,6 +370,7 @@ class Solver:
         # Initialise our best solution and cost 
         self._best_ever_solution = self._solution.copy()
         self._best_ever_cost = self._get_initial_solution_cost()
+        _current_cost = self._best_ever_cost
         
         for x in range(self.iterations):
             
@@ -374,11 +383,17 @@ class Solver:
             # Find the product we want to swap to
             new_product = self._product_swaps[x]
             
-            print("PARAMS", machine_swap, hour, new_product)
-            
             change = self._do_swap(machine_swap, hour, new_product)
+            
             if change is not None:
-                print('***', change['current_product'], new_product, change['cost_movement'])
+                if change['cost_movement'] < 0:
+                    # Accept the solution unconditionally
+                    
+                    old_product = change['current_product']
+                    if old_product != 0:
+                        self._production_map[old_product] = change['current_prod_production'].copy()
+                    if new_product != 0:
+                        self._production_map[new_product] = change['new_prod_production'].copy()
             
             
             
