@@ -164,3 +164,4 @@ cython_debug/
 *.DS_Store
 
 delete_me.py
+*.csv

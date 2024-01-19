@@ -41,6 +41,7 @@ class Solver:
         self._produce_id_reverse_map = {}
         
         # Keep track of all machines
+        self._machine_orr = self.config.MACHINE_STATS
         self._machine_product_map = {}
         
         # Simulated annealing params
@@ -82,7 +83,14 @@ class Solver:
                 machine.hourly_production
             )
         
-        # self._forecast.to_csv('forecast.csv')
+        # Initialise the actual production to be zeros
+        for product_id, hours in self._demands.items():
+            self._production_map[product_id] = np.zeros(len(hours))
+
+        df = pd.DataFrame(self._production_map)
+        df.to_csv('production_map.csv')
+        
+        self._forecast.to_csv('forecast.csv')
         
         # Now we need to overlay the shift patterns. They need to be expanded
         # out because they only cover a single week
@@ -175,10 +183,10 @@ class Solver:
         Generate a random starting solution
         """
         
-        # df = pd.DataFrame(self._demands)
-        # df.to_csv('demands.csv', index=False)
-        # df = pd.DataFrame(self._productivity_map)
-        # df.to_csv('productivity_map.csv', index=False)
+        df = pd.DataFrame(self._demands)
+        df.to_csv('demands.csv', index=False)
+        df = pd.DataFrame(self._productivity_map)
+        df.to_csv('productivity_map.csv', index=False)
         
         for machine_id, _ in self._productivity_map.items():
             self._solution[machine_id] = np.zeros(len(self._forecast))
@@ -190,13 +198,25 @@ class Solver:
                 self._solution[machine_id][index:index+self.min_swap_hours] = (
                     product_id
                 )
+                # print("PRODUCT", product)
+                # print("PRODUCT ID", product_id)
+                # print("PROD MAP", self._production_map[product])
+                # print("INDEX", index)
+                # print("MIN SWAP", self.min_swap_hours)
+                self._production_map[product][index:index+self.min_swap_hours] += (
+                    self._machine_orr[machine_id]['ideal_run_rate']
+                )
         
         # For human readability
-        # df = pd.DataFrame(self._solution)
-        # columns = df.columns
-        # for column in columns:
-        #     df[column] = df[column].map(self._produce_id_reverse_map)
-        # df.to_csv("solution.csv", index=False)
+        df = pd.DataFrame(self._solution)
+        columns = df.columns
+        for column in columns:
+            df[column] = df[column].map(self._produce_id_reverse_map)
+        df.to_csv("solution.csv", index=False)
+        
+        df = pd.DataFrame(self._production_map)
+        df.to_csv('initial_solution_production_map.csv')
+        
         
     def get_cost(
         self,

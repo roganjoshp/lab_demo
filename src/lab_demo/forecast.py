@@ -37,6 +37,7 @@ class SalesForecast:
         # Monday. Therefore, we should start with a zero target for the first
         # hour of the first day of the week
         self.forecast = pd.concat([_blank_week, self.forecast])
+        df = pd.DataFrame(self.forecast)
     
         # Add in a final "week" so that we have something to interp up to. 
         # Again, the dates we're working with all start on the Monday, but the 
@@ -44,7 +45,7 @@ class SalesForecast:
         # start of the following week to represent when the full demand is 
         # "realised"
         self.forecast = pd.concat([self.forecast, _blank_week])
-       
+        
         today = dt.date.today()
         days_to_add = 7 - today.weekday()
         next_monday = today + dt.timedelta(days=days_to_add)
